@@ -1,0 +1,16 @@
+language: python
+python:
+- 3.7
+- 3.6
+install: pip install -U tox-travis
+script: tox
+deploy:
+  provider: pypi
+  distributions: sdist bdist_wheel
+  user: panagiks
+  password:
+    secure: a4p2oF3yPQOLnlOr2yjzx9/gfMf7NW4/SxNRgSvjJm1Ve7/ekAsnsUMNKAFSH0IOV6jvif7BloXnMUV1fWlet9b9nIlHBA4BH8+5EDOTYvLeQc109yd0IcasXUWeHEVmIjfhMWC9reCnKh6H6aY/IN5Ce6vEJh5ukvM4PlEydT0PMTf7HGbFbIAKdrSeDyWzuwem8vvQN4rerDbSoKLhgoFehlaXh4ztvZ6o0AwQAce9GNns6qR9Z+cen8MVACqU6Nmfke8zjCqxHgOOW3g9i3IEwk14wSOmug6C4ev0qOjwkhffEPQLYE4y4vfwJ5fFqyBQUSJe7gGuhJr07dUKmrG28LIhpqNz6i0/hWXA8Dn+z3xkNqx8mwiau7M64nOS5VXNgCa21Zc0pgpgs1OyMQX95to2rGdqWZTJw8hbE55rCsA7COR5Tf1dT8qkcv6dWZJ4V6BNN8ctt1hojD8AMC5rL+N76IiQ6TB58Hixboyff4MysJyNJMDGnoFN+q1V2Z5fYwMg65gTfB1Xb+7QUPSp7QHMtmrC8urAfB5gWqovXD3BBMV56sFyWpkS8Uj1Qqrnh9CcR2k0lfXXEJupOIqZx2T39bf9nxY1zymzxNhnSmA56ybZUsJfdXJ4upIu+5zR2lNEgS8Iv+nDoavSLny0mJkMIg8erLIhAtne+xI=
+  on:
+    tags: true
+    repo: WCraaS/wcraas_storage
+    python: 3.7
