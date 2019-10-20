@@ -18,7 +18,15 @@ from wcraas_storage.config import MongoConfig
 
 
 class StorageWorker(WcraasWorker):
-    def __init__(self, amqp: AMQPConfig, mongo: MongoConfig, mapping: Dict[str, str], loglevel: int, *args, **kwargs):
+    def __init__(
+        self,
+        amqp: AMQPConfig,
+        mongo: MongoConfig,
+        mapping: Dict[str, str],
+        loglevel: int,
+        *args,
+        **kwargs,
+    ):
         super().__init__(amqp, loglevel)
         self.mongo = mongo
         self.logger = logging.getLogger("wcraas.storage")
@@ -26,6 +34,18 @@ class StorageWorker(WcraasWorker):
         self._db = AsyncIOMotorClient(mongo.host, mongo.port)[mongo.db]
         self._close = asyncio.Event()
         self.mapping = mapping
+
+    def get_queue_by_collection(self, collection):
+        """
+        Return the queue that corresponds to the given collection.
+
+        :param collection: The collection with which to determine the queue.
+        :type collection: string
+        """
+        for k, v in self.mapping.items():
+            if v == collection:
+                return k
+        raise KeyError
 
     async def store(self, message: IncomingMessage) -> None:
         """
@@ -36,10 +56,27 @@ class StorageWorker(WcraasWorker):
         """
         async with message.process():
             try:
-                result = await self._db[self.mapping[message.exchange]].insert_one(json.loads(message.body))
+                result = await self._db[self.mapping[message.exchange]].insert_one(
+                    json.loads(message.body)
+                )
                 self.logger.info(result)
             except Exception as err:
                 self.logger.error(err)
+
+    async def list_collections(self):
+        """
+        AMQP function that lists available collections in selected MongoDB.
+        """
+        return {
+            "data": [
+                {
+                    "name": collection["name"],
+                    "type": collection["type"],
+                    "queue": self.get_queue_by_collection(collection["name"]),
+                }
+                for collection in (await self._db.list_collections())
+            ]
+        }
 
     async def start(self) -> None:
         """
@@ -48,16 +85,24 @@ class StorageWorker(WcraasWorker):
         async with self._amqp_pool.acquire() as sub_channel:
             await sub_channel.set_qos(prefetch_count=1)
             for queue_name, collection in self.mapping.items():
-                exchange = await sub_channel.declare_exchange(queue_name, ExchangeType.FANOUT)
+                exchange = await sub_channel.declare_exchange(
+                    queue_name, ExchangeType.FANOUT
+                )
                 queue = await sub_channel.declare_queue(exclusive=True)
                 await queue.bind(exchange)
                 await queue.consume(self.store)
                 self.logger.info(f"Registered {queue_name} ...")
-            await self._close.wait()
+
+            async with self._amqp_pool.acquire() as rpc_channel:
+                rpc = await RPC.create(rpc_channel)
+                await rpc.register(
+                    "list_collections", self.list_collections, auto_delete=True
+                )
+                await self._close.wait()
 
     def run(self) -> None:
         """
-        Helper function implementing the synchronous boilerplate for initilization and reardown.
+        Helper function implementing the synchronous boilerplate for initilization and teardown.
         """
         loop = asyncio.get_event_loop()
         try:
