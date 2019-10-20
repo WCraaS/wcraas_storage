@@ -93,7 +93,7 @@ class StorageWorker(WcraasWorker):
                 await queue.consume(self.store)
                 self.logger.info(f"Registered {queue_name} ...")
 
-            async with self._ampqp_pool.acquire() as rpc_channel:
+            async with self._amqp_pool.acquire() as rpc_channel:
                 rpc = await RPC.create(rpc_channel)
                 await rpc.register(
                     "list_collections", self.list_collections, auto_delete=True
