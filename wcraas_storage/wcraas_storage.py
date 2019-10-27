@@ -73,6 +73,7 @@ class StorageWorker(WcraasWorker):
                     "name": collection["name"],
                     "type": collection["type"],
                     "queue": self.get_queue_by_collection(collection["name"]),
+                    "count": await self._db[collection["name"]].estimated_document_count(),
                 }
                 for collection in (await self._db.list_collections())
             ]
