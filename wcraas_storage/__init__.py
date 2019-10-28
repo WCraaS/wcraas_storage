@@ -4,7 +4,7 @@
 
 __author__ = """Kolokotronis Panagiotis"""
 __email__ = 'panagiks@gmail.com'
-__version__ = '0.1.2'
+__version__ = '0.1.3'
 
 from wcraas_storage.config import Config  # NOQA
 from wcraas_storage.wcraas_storage import StorageWorker  # NOQA
