@@ -2,6 +2,13 @@
 History
 =======
 
+0.1.3 (2019-10-28)
+------------------
+
+* User common module's pre-implemented patterns.
+* Ensure common module's base version.
+
+
 0.1.1 (2019-10-27)
 ------------------
 

@@ -11,9 +11,10 @@ from aio_pika import connect_robust, IncomingMessage, ExchangeType
 from aio_pika.patterns import RPC
 from aio_pika.pool import Pool
 from typing import Dict
-from motor.motor_asyncio import AsyncIOMotorClient
+from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 
 from wcraas_common import AMQPConfig, WcraasWorker
+from wcraas_common.decorator import is_rpc, consume
 from wcraas_storage.config import MongoConfig
 
 
@@ -34,6 +35,18 @@ class StorageWorker(WcraasWorker):
         self._db = AsyncIOMotorClient(mongo.host, mongo.port)[mongo.db]
         self._close = asyncio.Event()
         self.mapping = mapping
+
+    def _discover_callable(self, *args, **kwargs):
+        """
+        Overwride common module's callable check to exclude AsyncIOMotorDatabase.
+
+        AsyncIOMotorDatabase instances return (and create) a new collection refference
+        when their `__getattr__` is invoked and will thus always pass `_discover`.
+        """
+        for attr in super()._discover_callable(*args, **kwargs):
+            if isinstance(attr, AsyncIOMotorDatabase):
+                continue
+            yield attr
 
     def get_queue_by_collection(self, collection):
         """
@@ -63,6 +76,7 @@ class StorageWorker(WcraasWorker):
             except Exception as err:
                 self.logger.error(err)
 
+    @is_rpc("list_collections")
     async def list_collections(self):
         """
         AMQP function that lists available collections in selected MongoDB.
@@ -85,21 +99,13 @@ class StorageWorker(WcraasWorker):
         """
         async with self._amqp_pool.acquire() as sub_channel:
             await sub_channel.set_qos(prefetch_count=1)
+            # Not using the common module's `start_consume` because the consumer function is the same for
+            # multiple consume queues and dynamically creating new function names in the class in order to
+            # decorate them (which would enable using `start_consume`) would be too much of a hack.
             for queue_name, collection in self.mapping.items():
-                exchange = await sub_channel.declare_exchange(
-                    queue_name, ExchangeType.FANOUT
-                )
-                queue = await sub_channel.declare_queue(exclusive=True)
-                await queue.bind(exchange)
-                await queue.consume(self.store)
-                self.logger.info(f"Registered {queue_name} ...")
-
-            async with self._amqp_pool.acquire() as rpc_channel:
-                rpc = await RPC.create(rpc_channel)
-                await rpc.register(
-                    "list_collections", self.list_collections, auto_delete=True
-                )
-                await self._close.wait()
+                await self.register_consumer(sub_channel, self.store, queue_name)
+                self.logger.warning(f"Registered {queue_name} ...")
+            await self.start_rpc()
 
     def run(self) -> None:
         """

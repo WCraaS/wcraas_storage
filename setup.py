@@ -16,7 +16,7 @@ requirements = [
     'Click>=7.0',
     'environs',
     'motor',
-    'wcraas-common',
+    'wcraas-common>=0.1.7',
     'yarl>=1.3.0',
 ]
 
