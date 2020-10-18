@@ -10,7 +10,7 @@ import aio_pika
 from aio_pika import connect_robust, IncomingMessage, ExchangeType
 from aio_pika.patterns import RPC
 from aio_pika.pool import Pool
-from typing import Dict
+from typing import Dict, List
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 
 from wcraas_common import AMQPConfig, WcraasWorker
