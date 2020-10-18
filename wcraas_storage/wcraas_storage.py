@@ -48,7 +48,7 @@ class StorageWorker(WcraasWorker):
                 continue
             yield attr
 
-    def get_queue_by_collection(self, collection):
+    def get_queue_by_collection(self, collection: str) -> str:
         """
         Return the queue that corresponds to the given collection.
 
@@ -77,7 +77,7 @@ class StorageWorker(WcraasWorker):
                 self.logger.error(err)
 
     @is_rpc("list_collections")
-    async def list_collections(self):
+    async def list_collections(self) -> Dict[str, List[Dict[str, str]]]:
         """
         AMQP function that lists available collections in selected MongoDB.
         """
